@@ -1,34 +1,67 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { Card, Descriptions, Spin, Alert } from 'antd';
 import stockStore from '../stores/StockStore';
 
 const StockDetails: React.FC = () => {
-  const { symbol } = useParams<{ symbol: string }>(); // Get the stock symbol from URL params
+  const { symbol } = useParams<{ symbol: string }>(); // Extract stock symbol from URL
   const [stockDetails, setStockDetails] = useState<any | null>(null);
+  const [loading, setLoading] = useState<boolean>(true); // Loading state
+  const [error, setError] = useState<string | null>(null); // Error state
 
   useEffect(() => {
     const fetchStockDetails = async () => {
-      if (symbol) {
-        const data = await stockStore.getStockById(symbol);
-        if (data && data.length > 0) {
-          setStockDetails(data[0]); // Ensure we're taking the first result of the array
+      setLoading(true);
+      setError(null); // Reset error state
+      try {
+        if (symbol) {
+          const data = await stockStore.getStockById(symbol);
+          if (data && data.length > 0) {
+            setStockDetails(data[0]); // Take the first result
+          } else {
+            setError('Stock details not found.'); // Handle empty array
+          }
+        } else {
+          setError('Invalid stock symbol.');
         }
+      } catch (e) {
+        setError('An error occurred while fetching stock details.');
+      } finally {
+        setLoading(false);
       }
     };
+
     fetchStockDetails();
   }, [symbol]);
 
-  if (!stockDetails) {
-    return <div>Loading...</div>; // Show loading while fetching data
+  if (loading) {
+    return <Spin size="large" style={{ display: 'block', margin: '20px auto' }} />;
+  }
+
+  if (error) {
+    return (
+      <Alert
+        message="Error"
+        description={error}
+        type="error"
+        showIcon
+        style={{ margin: '20px' }}
+      />
+    );
   }
 
   return (
-    <div>
-      <h2>{stockDetails.name} ({stockDetails.symbol})</h2>
-      <p>Price: {stockDetails.price}</p>
-      <p>Stock Exchange: {stockDetails.stockExchange}</p>
-      {/* Add more details as needed */}
-    </div>
+    <Card
+      title={`${stockDetails.name} (${stockDetails.symbol})`}
+      bordered={true}
+      style={{ width: 600, margin: '20px auto' }}
+    >
+      <Descriptions column={1}>
+        <Descriptions.Item label="Price">{stockDetails.price}</Descriptions.Item>
+        <Descriptions.Item label="Stock Exchange">{stockDetails.stockExchange}</Descriptions.Item>
+        {/* Add more details as necessary */}
+      </Descriptions>
+    </Card>
   );
 };
 
