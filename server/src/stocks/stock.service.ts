@@ -1,46 +1,68 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Stock } from './schemas/stock.schema';
 import { HttpService } from '@nestjs/axios'; // Import HttpService
 import { lastValueFrom } from 'rxjs'; // Import lastValueFrom for observable handling
+import axios from 'axios';
 
 @Injectable()
-export class StockService {
+export class StockService implements OnModuleInit{
 
     constructor(
         @InjectModel(Stock.name) private stockModel: Model<Stock>,
         private readonly httpService: HttpService, // Inject HttpService
     ) {}
 
-    // Fetch and store stocks (already implemented)
-    async fetchAndStoreStocks(): Promise<void> {
+    async onModuleInit() {
+        console.log('Server initialized, fetching stocks...');
+        await this.fetchAndStoreStocks();
+      }
 
-        try {
-            const response = await lastValueFrom(this.httpService.get('https://financialmodelingprep.com/api/v3/search?query=AA&apikey=wK81sw0qFGOJKZKnNOnSS3KDplwqjpVK'));
-            const stocksData = response.data; // Assuming this is an array of stock objects
-                console.log("the stockdta is"+stocksData);
-            // Loop through each stock data and save it to MongoDB
-            for (const stock of stocksData) {
-                const stockToSave = {
-                    symbol: stock.symbol,
-                    name: stock.name,
-                    price: stock.price, // Ensure price is available in the fetched data
-                    stockExchange: stock.stockExchange,
-                    exchangeShortName: stock.exchangeShortName,
-                };
 
-                await this.addStock(stockToSave); // Save each stock to the database
-            }
-        } catch (error) {
-            console.error('Error fetching and storing stocks:', error);
+   
+    async fetchAndStoreStocks(): Promise<Stock[]> {
+      const apiUrl = 'https://financialmodelingprep.com/api/v3/stock/list?apikey=wK81sw0qFGOJKZKnNOnSS3KDplwqjpVK';
+      console.log('Starting to fetch stock data from the API...');
+      try {
+        const response = await axios.get(apiUrl);
+        console.log('API response received:', response.data); // Log the response
+  
+        const stocks = response.data.slice(1,10); // Assuming API returns an array of stock data // and cutting it to be short
+        
+        const savedStocks = []; // Array to store saved stocks
+  
+        // Save stocks to MongoDB (if not already stored)
+        for (const stock of stocks) {
+          console.log(`Checking if stock ${stock.symbol} already exists in DB...`);
+          const existingStock = await this.stockModel.findOne({ ticker: stock.symbol }).exec();
+          if (!existingStock) {
+            console.log(`Stock ${stock.symbol} not found, creating new entry.`);
+            const newStock = new this.stockModel({
+              ticker: stock.symbol,
+              name: stock.name,
+              price: stock.price,
+              change: stock.change,
+            });
+            savedStocks.push(await newStock.save()); // Push the saved stock into the array
+          } else {
+            console.log(`Stock ${stock.symbol} already exists in DB.`);
+          }
         }
+  
+        console.log('Stocks have been successfully fetched and stored.');
+        return savedStocks; // Return the array of saved stocks
+      } catch (error) {
+        console.error('Error fetching stocks from API:', error);
+        throw new Error('Failed to fetch stocks');
+      }
     }
+  
 
-    // Retrieve all stocks
-    async getAllStocks(): Promise<Stock[]> {
-        return this.stockModel.find().exec();
-    }
+    async findAll(): Promise<Stock[]> {
+        return this.stockModel.find().exec(); // Fetch all stocks from MongoDB
+      }
+      
 
     // Add a new stock
     async addStock(stockData: Partial<Stock>): Promise<Stock> {

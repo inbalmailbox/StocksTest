@@ -11,29 +11,23 @@ const StockDetails: React.FC = () => {
 
   useEffect(() => {
     const fetchStockDetails = async () => {
-      setLoading(true);
-      setError(null); // Reset error state
       try {
         if (symbol) {
-          const data = await stockStore.getStockById(symbol);
-          if (data && data.length > 0) {
-            setStockDetails(data[0]); // Take the first result
+          const stock = await stockStore.getStockById(symbol);
+          if (stock) {
+            setStockDetails(stock);
           } else {
-            setError('Stock details not found.'); // Handle empty array
+            console.error("Stock not found in store");
           }
-        } else {
-          setError('Invalid stock symbol.');
         }
-      } catch (e) {
-        setError('An error occurred while fetching stock details.');
-      } finally {
-        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching stock details:", error);
       }
     };
-
+  
     fetchStockDetails();
   }, [symbol]);
-
+  
   if (loading) {
     return <Spin size="large" style={{ display: 'block', margin: '20px auto' }} />;
   }

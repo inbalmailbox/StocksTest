@@ -1,36 +1,36 @@
-// server/src/stocks/stock.controller.ts
-import { Controller, Get, Post, Body, Put, Param } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios'; // Import HttpService
+import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
 import { StockService } from './stock.service';
-import { lastValueFrom } from 'rxjs';
+import { Stock } from './schemas/stock.schema';
 
-@Controller('stocks')
-export class StockController {
-    constructor(
-        private readonly stockService: StockService, 
-        private readonly httpService: HttpService // Inject HttpService
-    ) {}
 
-    @Get('fetch-and-store')
-    async fetchAndStoreStocks() {
-        const response = await lastValueFrom(this.httpService.get(`https://financialmodelingprep.com/api/v3/stock/list?apikey=wK81sw0qFGOJKZKnNOnSS3KDplwqjpVK`));
-        const stocksData = response.data;
-console.log(stocksData);
-        // Assuming stocksData is an array of stock objects
-        for (const stock of stocksData) {
-            const stockToSave = {
-                symbol: stock.symbol,
-                name: stock.name,
-                price: stock.price,
-                stockExchange: stock.stockExchange,
-                exchangeShortName: stock.exchangeShortName,
-            };
 
-            await this.stockService.addStock(stockToSave); // Save each stock to the database
-        }
 
-        return { message: 'Stocks fetched and stored successfully!' }; // You can modify this message as needed
-    }
+@Controller('stocks') // This makes the route accessible at /stocks
+export class StocksController {
+  constructor(private readonly stocksService: StockService) {}
 
-    // Other controller methods...
+  @Get()
+  async findAll() {
+    return this.stocksService.findAll(); // Fetch all stocks
+  }
+
+
+
+  // Add a new stock
+  @Post()
+  addStock(@Body() stockData: Partial<Stock>): Promise<Stock> {
+    return this.stocksService.addStock(stockData);
+  }
+
+  // Update an existing stock
+  @Put(':id')
+  updateStock(@Param('id') id: string, @Body() stockData: Partial<Stock>): Promise<Stock> {
+    return this.stocksService.updateStock(id, stockData);
+  }
+
+  // Delete a stock
+  @Delete(':id')
+  deleteStock(@Param('id') id: string): Promise<{ deleted: boolean }> {
+    return this.stocksService.deleteStock(id);
+  }
 }

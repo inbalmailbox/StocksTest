@@ -3,7 +3,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HttpModule } from '@nestjs/axios'; // Import HttpModule from @nestjs/axios
 import { StockService } from './stock.service';
-import { StockController } from './stock.controller';
+import { StocksController } from './stock.controller';
 import { Stock, StockSchema } from './schemas/stock.schema';
 
 @Module({
@@ -12,6 +12,7 @@ import { Stock, StockSchema } from './schemas/stock.schema';
     HttpModule, // Import HttpModule here
   ],
   providers: [StockService],
-  controllers: [StockController],
+  exports: [StockService], // Export if used in other modules
+  controllers: [StocksController],
 })
 export class StockModule {}
